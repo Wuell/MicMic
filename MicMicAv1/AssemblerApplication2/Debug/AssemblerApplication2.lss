@@ -1,12 +1,12 @@
 
-AVRASM ver. 2.2.8  C:\Users\machi\OneDrive\Documentos\Atmel Studio\7.0\AssemblerApplication2\AssemblerApplication2\main.asm Mon Feb 24 00:41:53 2025
+AVRASM ver. 2.2.8  C:\Users\machi\MicMic\MicMicAv1\AssemblerApplication2\main.asm Tue Feb 25 23:11:25 2025
 
 [builtin](2): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc\m328Pdef.inc'
-C:\Users\machi\OneDrive\Documentos\Atmel Studio\7.0\AssemblerApplication2\AssemblerApplication2\main.asm(1): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc\m328Pdef.inc'
+C:\Users\machi\MicMic\MicMicAv1\AssemblerApplication2\main.asm(1): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc\m328Pdef.inc'
 [builtin](2): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc\m328Pdef.inc'
-C:\Users\machi\OneDrive\Documentos\Atmel Studio\7.0\AssemblerApplication2\AssemblerApplication2\main.asm(1): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc\m328Pdef.inc'
+C:\Users\machi\MicMic\MicMicAv1\AssemblerApplication2\main.asm(1): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc\m328Pdef.inc'
                                  
-                                 .include "m328Pdef.inc"
+                                 .include "m328Pdef.inc"  ; Inclui definições para o microcontrolador ATmega328P
                                  
                                  ;***** Created: 2011-02-09 12:03 ******* Source: ATmega328P.xml **********
                                  ;*************************************************************************
@@ -1031,94 +1031,205 @@ C:\Users\machi\OneDrive\Documentos\Atmel Studio\7.0\AssemblerApplication2\Assemb
                                  
                                  ; ***** END OF FILE ******************************************************
                                  
+                                 ; Definição de constantes
                                  .equ F_CPU = 16000000       ; Frequência do clock (16MHz)
-                                 .equ BAUD = 4800            ; Taxa de transmissão
-                                 .equ ubrr = 207
+                                 .equ BAUD = 4800            ; Taxa de transmissão serial
+                                 .equ ubrr = 207             ; Valor do UBRR para configurar a taxa de transmissão
                                  
-                                 .equ DEBUG_LED = PB5   ; LED no pino PB5
-                                 .equ BIN_PIN = PD2
+                                 .equ DEBUG_LED = PB5   ; Define o pino PB5 como LED de depuração
+                                 .equ BIN_PIN = PD2     ; Define o pino PD2 como entrada para botão
                                  
+                                 ; Definição de registradores para uso geral
                                  .def uart_status = r17
                                  .def temp = r18
                                  .def name_data = r19
+                                 .def received_data = r20
+                                 .def data_segment = r21
+                                 .def char_count = r22
                                  
                                  .cseg
                                      .org 0x0000
-000000 c002                          rjmp start         ; Reset vector -> Salta para o início do programa
+000000 c024                          rjmp start         ; Vetor de reset -> Salta para o início do programa
                                  
                                  	.org 0x0002
-000002 c017                      	rjmp button_isr
-                                      ; Vetor de interrupção para INT0 (botão no PD2)
+000002 c04a                      	rjmp button_isr    ; Vetor de interrupção para INT0 (botão no PD2)
                                  
+                                 	.org 0x0024
+000024 c03a                      	rjmp uart_rx_isr   ; Vetor de interrupção para recepção da UART
+                                 
+                                 ; =============================
+                                 ;  Inicialização do Sistema
+                                 ; =============================
                                  start:
-000003 94f8                      	cli
-000004 e020                      	ldi temp, high(ubrr) 
-000005 9320 00c5                 	sts UBRR0H, temp
-000007 ec2f                      	ldi temp, low(ubrr)
-000008 9320 00c4                 	sts UBRR0L, temp
+000025 94f8                      	cli                      ; Desabilita interrupções globais durante a configuração
+000026 e020                      	ldi temp, high(ubrr)     
+000027 9320 00c5                 	sts UBRR0H, temp         ; Configura taxa de transmissão UART
+000029 ec2f                      	ldi temp, low(ubrr)
+00002a 9320 00c4                 	sts UBRR0L, temp
                                  
-00000a e028                      	ldi temp, (1<<TXEN0)
-00000b 9320 00c1                 	sts UCSR0B, temp
-00000d e026                      	ldi temp, (1<<UCSZ01)|(1<<UCSZ00)
-00000e 9320 00c2                 	sts UCSR0C, temp
+00002c e928                      	ldi temp, (1<<TXEN0) | (1<<RXEN0) | (1<<RXCIE0)
+00002d 9320 00c1                 	sts UCSR0B, temp         ; Habilita transmissão, recepção e interrupção de recepção da UART
+00002f e026                      	ldi temp, (3 << UCSZ00)
+000030 9320 00c2                 	sts UCSR0C, temp         ; Configura o formato do frame UART (8 bits, sem paridade, 1 stop bit)
                                  
-000010 9a25                      	sbi DDRB, DEBUG_LED   ; Configura PB5 como saída
+000032 9a25                      	sbi DDRB, DEBUG_LED   ; Configura PB5 como saída (LED de depuração)
                                  
-                                     ; Configurar botão no PD2
-000011 9852                          cbi DDRD, BIN_PIN       ; Configura PD2 como entrada				  
-000012 9a5a                          sbi PORTD, BIN_PIN		; Habilita pull-up interno
+                                     ; Configuração do botão no PD2
+000033 9852                          cbi DDRD, BIN_PIN       ; Configura PD2 como entrada				  
+000034 9a5a                          sbi PORTD, BIN_PIN      ; Habilita pull-up interno no botão
+                                 
+000035 ef2f                      	ldi temp, 0xFF
+000036 b927                      	out DDRC, temp          ; Configura PORTC como saída (para display de 7 segmentos)
+000037 b928                      	out PORTC, temp         ; Inicializa PORTC em alto (evita ruídos)
                                  
                                  	; Configurar Interrupção Externa no INT0 (PD2)
-000013 e021                      	ldi temp, (1<<INT0)     ; Habilita a interrupção externa INT0
-000014 bb2d                          out EIMSK, temp         ; Escreve em EIMSK (External Interrupt Mask Register)
+000038 e021                      	ldi temp, (1<<INT0)     ; Habilita a interrupção externa INT0
+000039 bb2d                          out EIMSK, temp         ; Escreve no registrador de máscara de interrupção externa
                                  
-000015 e02a                          ldi temp, (1 << ISC11) | (1 << ISC01)    ; Interrupção na borda de descida (falling edge)
-000016 9320 0069                     sts EICRA, temp         ; Configura EICRA (External Interrupt Control Register A)
+00003a e02a                          ldi temp, (1 << ISC11) | (1 << ISC01)    ; Interrupção na borda de descida (falling edge)
+00003b 9320 0069                     sts EICRA, temp         ; Configura EICRA para ativar a interrupção no INT0
                                  
-000018 9478                      	sei
+00003d 9478                      	sei                      ; Habilita interrupções globais
                                  
                                  main:
-000019 cfff                          rjmp main
+00003e cfff                          rjmp main   ; Loop infinito
                                  
-                                 button_isr:
-00001a 9a2d                      	sbi PORTB, DEBUG_LED
-00001b 93ef                      	push ZL
-00001c 93ff                      	push ZH
-                                 
-                                 
-00001d ecec                      	ldi ZL, low(nome * 2)
-00001e e0f0                      	ldi ZH, high(nome * 2)
-00001f 940e 002c                 	call uart_print
-                                 
-000021 91ef                      	pop ZL
-000022 91ff                      	pop ZH
-000023 982d                      	cbi PORTB, DEBUG_LED  ; Apaga LED
-000024 9518                      	reti	
-                                 
+                                 ; =============================
+                                 ;  Rotina de Transmissão UART
+                                 ; =============================
                                  uart_transmit:
-000025 9110 00c0                 	lds uart_status, UCSR0A  ; Carrega o registrador de status da UART
-000027 ff15                      	sbrs uart_status, 5      ; Verifica se o bit 5 (UDRE0) está setado, se estiver pula a proxima linha de comando
-000028 cffc                      	rjmp uart_transmit  ; Se não estiver pronto, espera
-000029 9330 00c6                 	sts UDR0, name_data
-00002b 9508                      	ret
+00003f 9110 00c0                 	lds uart_status, UCSR0A  ; Carrega o registrador de status da UART
+000041 ff15                      	sbrs uart_status, 5      ; Verifica se o buffer de transmissão está pronto
+000042 cffc                      	rjmp uart_transmit       ; Se não estiver pronto, espera
+000043 9330 00c6                 	sts UDR0, name_data      ; Transmite o caractere armazenado em name_data
+000045 9508                      	ret
                                  
+                                 ; =============================
+                                 ;  Rotina de Recepção UART
+                                 ; =============================
+                                 uart_receive:
+000046 9110 00c0                 	lds uart_status, UCSR0A  ; Carrega o status da UART
+000048 ff17                      	sbrs uart_status, RXC0   ; Verifica se há um dado recebido
+000049 cffc                      	rjmp uart_receive        ; Se não, espera
+00004a 9140 00c6                 	lds received_data, UDR0  ; Lê o dado recebido
+00004c 9508                      	ret
+                                 
+                                 ; =============================
+                                 ;  Interrupção do Botão (PD2)
+                                 ; =============================
+                                 button_isr:
+00004d 9a2d                      	sbi PORTB, DEBUG_LED  ; Acende o LED de depuração
+00004e 93ef                      	push ZL
+00004f 93ff                      	push ZH
+                                 
+000050 e6ec                      	ldi ZL, low(nome * 2)
+000051 e0f2                      	ldi ZH, high(nome * 2)
+000052 940e 0058                 	call uart_print       ; Chama a rotina para imprimir a string armazenada em "nome"
+                                 
+000054 91ef                      	pop ZL
+000055 91ff                      	pop ZH
+000056 982d                      	cbi PORTB, DEBUG_LED  ; Apaga LED
+000057 9518                      	reti	
+                                 
+                                 ; =============================
+                                 ;  Rotina para Envio de Strings via UART
+                                 ; =============================
                                  uart_print:
-00002c 9135                      	lpm name_data, Z+
-00002d 3030                      	cpi name_data, 0
-00002e f019                      	breq uart_done
-00002f 940e 0025                 	call uart_transmit
-000031 cffa                      	rjmp uart_print
+000058 9135                      	lpm name_data, Z+    ; Lê um caractere da memória do programa
+000059 3030                      	cpi name_data, 0     ; Verifica se é o final da string
+00005a f019                      	breq uart_done       ; Se for, encerra a transmissão
+00005b 940e 003f                 	call uart_transmit   ; Envia o caractere atual pela UART
+00005d cffa                      	rjmp uart_print      ; Continua enviando até chegar ao final
                                  
                                  uart_done:
-000032 9508                      	ret
+00005e 9508                      	ret
                                  
+                                 ; =============================
+                                 ;  Interrupção de Recepção UART
+                                 ; =============================
+                                 uart_rx_isr:
+00005f 9a2d                      	sbi PORTB, DEBUG_LED  ; Acende LED de debug para indicar recepção de dado
+000060 932f                      	push temp
+000061 940e 0046                     call uart_receive     ; Recebe o dado da UART
+000063 940e 0067                     call update_display   ; Atualiza o display com o dado recebido
+000065 912f                          pop temp
+000066 9518                          reti  ; Retorna da interrupção
+                                 
+                                 ; =============================
+                                 ;  Atualização do Display de 7 Segmentos
+                                 ; =============================
+                                 update_display:
+                                     ; Compara o caractere recebido com os valores ASCII dos números de 0 a 9
+000067 3340                          cpi received_data, 0x30
+000068 e35f                          ldi data_segment, 0x3f  ; '0'
+000069 f179                          breq exibi
+00006a 3341                          cpi received_data, 0x31
+00006b e056                          ldi data_segment, 0x06  ; '1'
+00006c f161                          breq exibi
+00006d 3342                          cpi received_data, 0x32
+00006e e55b                          ldi data_segment, 0x5b  ; '2'
+00006f f149                          breq exibi
+000070 3343                          cpi received_data, 0x33
+000071 e45f                          ldi data_segment, 0x4f  ; '3'
+000072 f131                          breq exibi
+000073 3344                          cpi received_data, 0x34
+000074 e656                          ldi data_segment, 0x66  ; '4'
+000075 f119                          breq exibi
+000076 3345                          cpi received_data, 0x35
+000077 e65d                          ldi data_segment, 0x6d  ; '5'
+000078 f101                          breq exibi
+000079 3346                          cpi received_data, 0x36
+00007a e75d                          ldi data_segment, 0x7d  ; '6'
+00007b f0e9                          breq exibi
+00007c 3347                          cpi received_data, 0x37
+00007d e057                          ldi data_segment, 0x07  ; '7'
+00007e f0d1                          breq exibi
+00007f 3348                          cpi received_data, 0x38
+000080 e75f                          ldi data_segment, 0x7f  ; '8'
+000081 f0b9                          breq exibi
+000082 3349                          cpi received_data, 0x39
+000083 e65f                          ldi data_segment, 0x6f  ; '9'
+000084 f0a1                          breq exibi
+                                 
+                                     ; Comparação para letras minúsculas 'a' a 'f'
+000085 3641                          cpi received_data, 0x61
+000086 e757                          ldi data_segment, 0x77  ; 'a'
+000087 f089                          breq exibi
+000088 3642                          cpi received_data, 0x62
+000089 e75c                          ldi data_segment, 0x7c  ; 'b'
+00008a f071                          breq exibi
+00008b 3643                          cpi received_data, 0x63
+00008c e359                          ldi data_segment, 0x39  ; 'c'
+00008d f059                          breq exibi
+00008e 3644                          cpi received_data, 0x64
+00008f e55e                          ldi data_segment, 0x5e  ; 'd'
+000090 f041                          breq exibi
+000091 3645                          cpi received_data, 0x65
+000092 e759                          ldi data_segment, 0x79  ; 'e'
+000093 f029                          breq exibi
+000094 3646                          cpi received_data, 0x66
+000095 e751                          ldi data_segment, 0x71  ; 'f'
+000096 f011                          breq exibi
+                                 
+                                     ; Se não for um caractere válido, exibir '-'
+000097 e450                      	ldi data_segment, 0x40
+000098 f001                      	breq exibi
+                                 
+                                 exibi:
+000099 b958                          out PORTC, data_segment  ; Atualiza o display de 7 segmentos
+00009a 9508                          ret
+                                 
+                                 ; =============================
+                                 ;  Definição da String "nome"
+                                 ; =============================
                                  .cseg
                                  .align 2
-000066 6557
-000067 6c6c
-000068 7265
-000069 6f73
-00006a 0a6e
+000136 6557
+000137 6c6c
+000138 7265
+000139 6f73
+00013a 0a6e
+00013b 000a                      nome: .db "Wellerson", 0x0A, 0x0A, 0x00  ; Nome a ser exibido via UART
 
 
 RESOURCE USE INFORMATION
@@ -1138,28 +1249,28 @@ counted separately from r26..r31 here.
 "ATmega328P" register use summary:
 x  :   0 y  :   0 z  :   1 r0 :   0 r1 :   0 r2 :   0 r3 :   0 r4 :   0 
 r5 :   0 r6 :   0 r7 :   0 r8 :   0 r9 :   0 r10:   0 r11:   0 r12:   0 
-r13:   0 r14:   0 r15:   0 r16:   0 r17:   2 r18:  12 r19:   3 r20:   0 
-r21:   0 r22:   0 r23:   0 r24:   0 r25:   0 r26:   0 r27:   0 r28:   0 
+r13:   0 r14:   0 r15:   0 r16:   0 r17:   4 r18:  17 r19:   3 r20:  17 
+r21:  18 r22:   0 r23:   0 r24:   0 r25:   0 r26:   0 r27:   0 r28:   0 
 r29:   0 r30:   3 r31:   3 
-Registers used: 6 out of 35 (17.1%)
+Registers used: 8 out of 35 (22.9%)
 
 "ATmega328P" instruction use summary:
 .lds  :   0 .sts  :   0 adc   :   0 add   :   0 adiw  :   0 and   :   0 
 andi  :   0 asr   :   0 bclr  :   0 bld   :   0 brbc  :   0 brbs  :   0 
-brcc  :   0 brcs  :   0 break :   0 breq  :   1 brge  :   0 brhc  :   0 
+brcc  :   0 brcs  :   0 break :   0 breq  :  18 brge  :   0 brhc  :   0 
 brhs  :   0 brid  :   0 brie  :   0 brlo  :   0 brlt  :   0 brmi  :   0 
 brne  :   0 brpl  :   0 brsh  :   0 brtc  :   0 brts  :   0 brvc  :   0 
-brvs  :   0 bset  :   0 bst   :   0 call  :   2 cbi   :   2 cbr   :   0 
+brvs  :   0 bset  :   0 bst   :   0 call  :   4 cbi   :   2 cbr   :   0 
 clc   :   0 clh   :   0 cli   :   1 cln   :   0 clr   :   0 cls   :   0 
 clt   :   0 clv   :   0 clz   :   0 com   :   0 cp    :   0 cpc   :   0 
-cpi   :   1 cpse  :   0 dec   :   0 eor   :   0 fmul  :   0 fmuls :   0 
+cpi   :  17 cpse  :   0 dec   :   0 eor   :   0 fmul  :   0 fmuls :   0 
 fmulsu:   0 icall :   0 ijmp  :   0 in    :   0 inc   :   0 jmp   :   0 
-ld    :   0 ldd   :   0 ldi   :   8 lds   :   1 lpm   :   1 lsl   :   0 
+ld    :   0 ldd   :   0 ldi   :  26 lds   :   3 lpm   :   1 lsl   :   0 
 lsr   :   0 mov   :   0 movw  :   0 mul   :   0 muls  :   0 mulsu :   0 
-neg   :   0 nop   :   0 or    :   0 ori   :   0 out   :   1 pop   :   2 
-push  :   2 rcall :   0 ret   :   2 reti  :   1 rjmp  :   5 rol   :   0 
-ror   :   0 sbc   :   0 sbci  :   0 sbi   :   3 sbic  :   0 sbis  :   0 
-sbiw  :   0 sbr   :   0 sbrc  :   0 sbrs  :   1 sec   :   0 seh   :   0 
+neg   :   0 nop   :   0 or    :   0 ori   :   0 out   :   4 pop   :   3 
+push  :   3 rcall :   0 ret   :   4 reti  :   2 rjmp  :   7 rol   :   0 
+ror   :   0 sbc   :   0 sbci  :   0 sbi   :   4 sbic  :   0 sbis  :   0 
+sbiw  :   0 sbr   :   0 sbrc  :   0 sbrs  :   2 sec   :   0 seh   :   0 
 sei   :   1 sen   :   0 ser   :   0 ses   :   0 set   :   0 sev   :   0 
 sez   :   0 sleep :   0 spm   :   0 st    :   0 std   :   0 sts   :   6 
 sub   :   0 subi  :   0 swap  :   0 tst   :   0 wdr   :   0 
@@ -1168,7 +1279,7 @@ Instructions used: 18 out of 113 (15.9%)
 "ATmega328P" memory use summary [bytes]:
 Segment   Begin    End      Code   Data   Used    Size   Use%
 ---------------------------------------------------------------
-[.cseg] 0x000000 0x0000d8    100     12    112   32768   0.3%
+[.cseg] 0x000000 0x000278    242     12    254   32768   0.8%
 [.dseg] 0x000100 0x000100      0      0      0    2048   0.0%
 [.eseg] 0x000000 0x000000      0      0      0    1024   0.0%
 

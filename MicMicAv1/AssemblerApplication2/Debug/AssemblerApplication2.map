@@ -1,5 +1,5 @@
 
-AVRASM ver. 2.2.8  C:\Users\machi\OneDrive\Documentos\Atmel Studio\7.0\AssemblerApplication2\AssemblerApplication2\main.asm Mon Feb 24 00:41:53 2025
+AVRASM ver. 2.2.8  C:\Users\machi\MicMic\MicMicAv1\AssemblerApplication2\main.asm Tue Feb 25 23:11:25 2025
 
 
 EQU  SIGNATURE_000 0000001e
@@ -703,10 +703,17 @@ EQU  BIN_PIN      00000002
 DEF  uart_status  r17
 DEF  temp         r18
 DEF  name_data    r19
-CSEG start        00000003
-CSEG button_isr   0000001a
-CSEG main         00000019
-CSEG nome         00000066
-CSEG uart_print   0000002c
-CSEG uart_transmit 00000025
-CSEG uart_done    00000032
+DEF  received_data r20
+DEF  data_segment r21
+DEF  char_count   r22
+CSEG start        00000025
+CSEG button_isr   0000004d
+CSEG uart_rx_isr  0000005f
+CSEG main         0000003e
+CSEG uart_transmit 0000003f
+CSEG uart_receive 00000046
+CSEG nome         00000136
+CSEG uart_print   00000058
+CSEG uart_done    0000005e
+CSEG update_display 00000067
+CSEG exibi        00000099
