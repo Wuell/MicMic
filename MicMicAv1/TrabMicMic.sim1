@@ -1,0 +1,53 @@
+<circuit version="1.1.0-SR1" rev="2005" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+
+<item itemtype="MCU" CircId="mega328-1" mainComp="false" Show_id="true" Show_Val="false" Pos="-40,-4" rotation="0" hflip="1" vflip="1" label="mega328-1" idLabPos="0,-20" labelrot="0" valLabPos="-16,20" valLabRot="0" Frequency="16 MHz" Program="MicMicAv1/AssemblerApplication2/Debug/AssemblerApplication2.hex" Auto_Load="true" saveEepr="false" Logic_Symbol="true" Rst_enabled="false" Ext_Osc="false" Wdt_enabled="false" Clk_Out="false" MainMcu="true" SerialMon="-1" />
+
+<item itemtype="SerialTerm" CircId="SerialTerm-2" mainComp="false" Show_id="false" Show_Val="false" Pos="-144,8" rotation="-360" hflip="-1" vflip="1" label="SerialTerm-2" idLabPos="-20,-32" labelrot="0" valLabPos="-16,20" valLabRot="0" Baudrate="4800 _Bd" DataBits="8 _bits" StopBits="1 _bits" SerialMon="false" />
+
+<item itemtype="Ground" CircId="Ground-4" mainComp="false" Show_id="false" Show_Val="false" Pos="-116,216" rotation="0" hflip="1" vflip="1" label="Ground-4" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="Subcircuit" CircId="AButton-11" mainComp="false" Show_id="true" Show_Val="false" Pos="-156,64" rotation="0" hflip="1" vflip="1" label="AButton-11" idLabPos="0,-20" labelrot="0" valLabPos="-16,20" valLabRot="0">
+<mainCompProps MainCompId="Push-1" Norm_Close="false" Poles="1" />
+</item>
+
+<item itemtype="Seven Segment" CircId="Seven Segment-13" mainComp="false" Show_id="false" Show_Val="false" Pos="92,100" rotation="0" hflip="1" vflip="1" label="Seven Segment-13" idLabPos="20,-44" labelrot="0" valLabPos="-16,20" valLabRot="0" Color="Yellow" NumDisplays="1" Vertical_Pins="false" CommonCathode="true" Threshold="2.4 V" MaxCurrent="20 mA" Resistance="100 Ω" />
+
+<item itemtype="Led" CircId="Led-7" mainComp="false" Show_id="false" Show_Val="false" Pos="176,192" rotation="-180" hflip="1" vflip="1" label="Led-7" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Color="Red" Grounded="false" Threshold="2.4 V" MaxCurrent="30 mA" Resistance="100 Ω" />
+
+<item itemtype="Node" CircId="Node-12" mainComp="false" Pos="-116,192" />
+
+<item itemtype="Node" CircId="Node-23" mainComp="false" Pos="100,192" />
+
+<item itemtype="Connector" uid="Connector-4" startpinid="mega328-1-PORTD1" endpinid="SerialTerm-2-pin1" pointList="-48,12,-120,12,-120,16" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="mega328-1-PORTD0" endpinid="SerialTerm-2-pin0" pointList="-48,4,-120,4,-120,0" />
+
+<item itemtype="Connector" uid="Connector-25" startpinid="AButton-11-!Q" endpinid="Node-12-1" pointList="-116,80,-116,192" />
+
+<item itemtype="Connector" uid="Connector-27" startpinid="Node-12-2" endpinid="Ground-4-Gnd" pointList="-116,192,-116,200" />
+
+<item itemtype="Connector" uid="Connector-28" startpinid="AButton-11-Q" endpinid="mega328-1-PORTD2" pointList="-116,72,-116,20,-48,20" />
+
+<item itemtype="Connector" uid="Connector-15" startpinid="mega328-1-PORTB5" endpinid="Led-7-lPin" pointList="8,44,192,44,192,192" />
+
+<item itemtype="Connector" uid="Connector-72" startpinid="Seven Segment-13-pin_a" endpinid="mega328-1-PORTC0" pointList="68,76,8,76" />
+
+<item itemtype="Connector" uid="Connector-73" startpinid="mega328-1-PORTC1" endpinid="Seven Segment-13-pin_b" pointList="8,84,68,84" />
+
+<item itemtype="Connector" uid="Connector-74" startpinid="mega328-1-PORTC2" endpinid="Seven Segment-13-pin_c" pointList="8,92,68,92" />
+
+<item itemtype="Connector" uid="Connector-75" startpinid="mega328-1-PORTC3" endpinid="Seven Segment-13-pin_d" pointList="8,100,68,100" />
+
+<item itemtype="Connector" uid="Connector-76" startpinid="mega328-1-PORTC4" endpinid="Seven Segment-13-pin_e" pointList="8,108,68,108" />
+
+<item itemtype="Connector" uid="Connector-77" startpinid="Seven Segment-13-pin_f" endpinid="mega328-1-PORTC5" pointList="68,116,8,116" />
+
+<item itemtype="Connector" uid="Connector-78" startpinid="mega328-1-PORTC6" endpinid="Seven Segment-13-pin_g" pointList="8,124,68,124" />
+
+<item itemtype="Connector" uid="Connector-85" startpinid="Node-23-2" endpinid="Node-12-0" pointList="100,192,-116,192" />
+
+<item itemtype="Connector" uid="Connector-84" startpinid="Led-7-rPin" endpinid="Node-23-0" pointList="160,192,100,192" />
+
+<item itemtype="Connector" uid="Connector-83" startpinid="Seven Segment-13-pin_commona" endpinid="Node-23-1" pointList="100,132,100,192" />
+
+</circuit>
