@@ -161,22 +161,22 @@ update_display:
     breq exibi
 
     ; Comparação para letras minúsculas 'a' a 'f'
-    cpi received_data, 0x61
+    cpi received_data, 0x41
     ldi data_segment, 0x77  ; 'a'
     breq exibi
-    cpi received_data, 0x62
+    cpi received_data, 0x42
     ldi data_segment, 0x7c  ; 'b'
     breq exibi
-    cpi received_data, 0x63
+    cpi received_data, 0x43
     ldi data_segment, 0x39  ; 'c'
     breq exibi
-    cpi received_data, 0x64
+    cpi received_data, 0x44
     ldi data_segment, 0x5e  ; 'd'
     breq exibi
-    cpi received_data, 0x65
+    cpi received_data, 0x45
     ldi data_segment, 0x79  ; 'e'
     breq exibi
-    cpi received_data, 0x66
+    cpi received_data, 0x46
     ldi data_segment, 0x71  ; 'f'
     breq exibi
 

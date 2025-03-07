@@ -1,5 +1,5 @@
 
-AVRASM ver. 2.2.8  C:\Users\machi\MicMic\MicMicAv1\AssemblerApplication2\main.asm Tue Feb 25 23:11:25 2025
+AVRASM ver. 2.2.8  C:\Users\machi\MicMic\MicMicAv1\AssemblerApplication2\main.asm Fri Mar 07 09:29:48 2025
 
 [builtin](2): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc\m328Pdef.inc'
 C:\Users\machi\MicMic\MicMicAv1\AssemblerApplication2\main.asm(1): Including file 'C:/Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATmega_DFP\1.7.374\avrasm\inc\m328Pdef.inc'
@@ -1192,22 +1192,22 @@ C:\Users\machi\MicMic\MicMicAv1\AssemblerApplication2\main.asm(1): Including fil
 000084 f0a1                          breq exibi
                                  
                                      ; Comparação para letras minúsculas 'a' a 'f'
-000085 3641                          cpi received_data, 0x61
+000085 3441                          cpi received_data, 0x41
 000086 e757                          ldi data_segment, 0x77  ; 'a'
 000087 f089                          breq exibi
-000088 3642                          cpi received_data, 0x62
+000088 3442                          cpi received_data, 0x42
 000089 e75c                          ldi data_segment, 0x7c  ; 'b'
 00008a f071                          breq exibi
-00008b 3643                          cpi received_data, 0x63
+00008b 3443                          cpi received_data, 0x43
 00008c e359                          ldi data_segment, 0x39  ; 'c'
 00008d f059                          breq exibi
-00008e 3644                          cpi received_data, 0x64
+00008e 3444                          cpi received_data, 0x44
 00008f e55e                          ldi data_segment, 0x5e  ; 'd'
 000090 f041                          breq exibi
-000091 3645                          cpi received_data, 0x65
+000091 3445                          cpi received_data, 0x45
 000092 e759                          ldi data_segment, 0x79  ; 'e'
 000093 f029                          breq exibi
-000094 3646                          cpi received_data, 0x66
+000094 3446                          cpi received_data, 0x46
 000095 e751                          ldi data_segment, 0x71  ; 'f'
 000096 f011                          breq exibi
                                  

@@ -1,0 +1,393 @@
+\documentclass{sbrt}
+\usepackage[english,brazil]{babel}
+\usepackage[utf8]{inputenc}
+\newtheorem{theorem}{Teorema}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref} % Permite links clicáveis e melhor formatação
+
+
+
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single
+}
+
+\renewcommand{\lstlistingname}{Código}
+
+\lstdefinestyle{assemblyStyle}{
+    language=[x86masm]Assembler,  % Define como Assembly
+    basicstyle=\ttfamily\footnotesize,  % Fonte monoespaçada pequena
+    keywordstyle=\color{blue},    % Palavras-chave em azul
+    commentstyle=\color{green!70!black}\itshape, % Comentários em verde escuro e itálico
+    stringstyle=\color{red},      % Strings em vermelho
+    backgroundcolor=\color{gray!10}, % Fundo levemente acinzentado
+    frame=single,                 % Caixa ao redor do código
+    rulecolor=\color{black},      % Cor da borda
+    numbers=left,                 % Adiciona numeração das linhas
+    numbersep=5pt,                % Espaçamento da numeração
+    numberstyle=\tiny\color{gray},% Estilo da numeração
+    tabsize=4,                    % Tamanho do tab
+    breaklines=true,
+    breakatwhitespace=true
+    captionpos=t,                 % Posição da legenda (bottom)
+    xleftmargin=10pt,             % Margem esquerda para melhor leitura
+}
+
+\title{Sistema de Interrupção para Display de 7 Segmentos com USART em Assembly}
+\author{%
+  Wellerson Nascimento - 202206840045\\
+  Universidade Federal do Pará
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{resumo}
+Este artigo apresenta a implementação de um sistema baseado em microcontrolador ATmega328P, onde um terminal USART é utilizado para enviar caracteres que são exibidos em um display de 7 segmentos. O sistema conta com um botão físico que, quando pressionado, transmite o nome do usuário pelo terminal. Além disso, um LED de depuração foi implementado para auxiliar no desenvolvimento e na identificação de erros. A programação foi realizada em Assembly, utilizando interrupções para captura de eventos e atualização eficiente do display.
+\end{resumo}
+
+\section{Introdução}
+Os microcontroladores são amplamente utilizados em sistemas embarcados devido à sua versatilidade e baixo custo. A comunicação serial USART (Universal Synchronous and Asynchronous Receiver Transmitter) permite a troca de dados entre o microcontrolador e um dispositivo. O  artigo descreve um sistema onde um terminal USART é utilizado para exibir caracteres em um display de 7 segmentos, além de um botão físico que transmite um nome predefinido ao ser pressionado. Para depuração e auxílio no desenvolvimento, um LED de status foi implementado.
+
+\section{Materiais e Métodos}
+O sistema foi desenvolvido utilizando o microcontrolador ATmega328P e programado em Assembly. A taxa de transmissão serial foi configurada para 4800 baud. Foram utilizadas as seguintes funcionalidades:
+
+\begin{itemize}
+    \item Interrupção de recepção USART para captura de caracteres digitados no terminal.
+    \item Atualização do display de 7 segmentos para exibir números de 1 a 9 e letras de A a F.
+    \item Exibição de um traço (-) caso o caractere recebido seja inválido.
+    \item Interrupção externa para o botão, transmitindo o nome do usuário pelo terminal.
+    \item LED de depuração acionado durante a execução de eventos.
+\end{itemize}
+
+\section{Implementação}
+
+\subsection{Inicializacao do Sistema}
+
+A inicialização do sistema consiste na configuração dos dispositivos de entrada e saída do microcontrolador ATmega328P, garantindo que os periféricos operem corretamente. Essa etapa inclui a configuração da comunicação UART, a definição de pinos de entrada e saída e a ativação de interrupções externas.
+
+\subsubsection{Configuração da UART}
+A comunicação serial UART é essencial para a troca de dados com outros dispositivos. O código define os parâmetros de transmissão com uma taxa de 4800 bps. A Tabela~\ref{tab:uart} resume os registradores utilizados para a configuração da UART.
+
+\begin{table}[h]
+\centering
+\caption{Configuração da UART}
+\label{tab:uart}
+\begin{tabular}{|c|c|c|}
+\hline
+Registrador & Configuração & Descrição \\
+\hline
+UBRR0 & 207 & Taxa de trans. 4800 bps \\
+UCSR0B & TXEN0, RXEN0, RXCIE0 & TX, RX e interrupção \\
+UCSR0C & 8 bits, sem paridade & Formato \\
+\hline
+\end{tabular}
+\end{table}
+
+A comunicação é gerenciada por meio das rotinas de transmissão (\texttt{uart\_transmit}) e recepção (\texttt{uart\_receive}).
+
+\begin{lstlisting}[style=assemblyStyle, caption={Rotina de Transmissão via UART}, label={lst:uart_transmit}]
+uart_transmit:
+	lds uart_status, UCSR0A  ; Carrega o registrador de status da UART
+	sbrs uart_status, 5      ; Verifica se o buffer de transmissao esta pronto
+	rjmp uart_transmit       ; Se nao estiver pronto, espera
+	sts UDR0, name_data      ; Transmite o caractere armazenado em name_data
+	ret
+\end{lstlisting}
+O funcionamento da rotina de transmissão via UART baseia-se na verificação do status do buffer de transmissão da UART. Inicialmente, a função consulta o bit de status no registrador UCSR0A para determinar se o transmissor está pronto para enviar um novo caractere. Caso o buffer ainda esteja ocupado, a execução entra em um loop de espera até que o hardware sinalize disponibilidade. Assim que a UART estiver apta para transmitir, o caractere armazenado na variável name\_data é carregado no registrador UDR0, iniciando automaticamente a transmissão.
+\begin{lstlisting}[style=assemblyStyle, caption={Rotina de Recepção via UART}, label={lst:uart_receive}]
+uart_receive:
+	lds uart_status, UCSR0A  ; Carrega o status da UART
+	sbrs uart_status, RXC0   ; Verifica se ha um dado recebido
+	rjmp uart_receive        ; Se nao, espera
+	lds received_data, UDR0  ; Le o dado recebido
+	ret
+\end{lstlisting}
+O funcionamento da rotina de recepção via UART inicia com a verificação do bit RXC0 no registrador UCSR0A, que sinaliza a disponibilidade de um novo dado no buffer de recepção. Enquanto não houver um dado válido, a rotina permanece em um estado de espera.
+
+Quando um dado é recebido, ele é automaticamente armazenado no registrador UDR0, de onde é transferido para a variável received\_data para posterior processamento.
+
+\subsubsection{Configuracao dos Pinos de Entrada e Saida}
+
+Os dispositivos utilizados neste sistema incluem um \textbf{botão de entrada} e um \textbf{display de 7 segmentos} para saída. A seguir, são apresentadas as definições de pinos para cada um desses periféricos.
+
+\paragraph{Botao de Entrada (PD2)}
+O botão é conectado ao \textbf{pino PD2} do microcontrolador e configurado como \textbf{entrada digital}. Além disso, o resistor pull-up interno é ativado para evitar estados indefinidos quando o botão não está pressionado.
+
+No código, essa configuração é realizada da seguinte forma:
+
+\begin{lstlisting}[style=assemblyStyle, caption={Configuracao do botao como entrada digital}, label={lst:botao}]
+cbi DDRD, BIN_PIN   ; Configura PD2 como entrada
+sbi PORTD, BIN_PIN  ; Habilita pull-up interno
+\end{lstlisting}
+
+- \texttt{DDRD} (Data Direction Register for Port D) → Configura \textbf{PD2 como entrada} (\texttt{cbi DDRD, PD2}).
+
+- \texttt{PORTD} → Ativa o \textbf{resistor pull-up interno} (\texttt{sbi PORTD, PD2}).
+
+A ativação da \textbf{interrupção externa INT0} no pino PD2 também é realizada, permitindo que o sistema responda automaticamente quando o botão for pressionado.
+
+\paragraph{Display de 7 Segmentos (PORTC)}
+O display de 7 segmentos é utilizado para exibir os caracteres recebidos via UART. Ele está conectado a \textbf{porta C} (PC0 a PC7) e é configurado como \textbf{saída digital} para permitir o controle direto dos segmentos.
+
+A configuração é feita conforme o código abaixo:
+
+\begin{lstlisting}[style=assemblyStyle, caption={Configuracao do display de 7 segmentos}, label={lst:display}]
+ldi temp, 0xFF
+out DDRC, temp      ; Configura PORTC como saida
+out PORTC, temp     ; Inicializa PORTC em alto (evita ruidos)
+\end{lstlisting}
+
+- \texttt{DDRC} (Data Direction Register for Port C) → Configura todos os pinos da \textbf{PORTC como saida}.
+
+- \texttt{PORTC} → Inicializa o barramento em nível alto (\texttt{0xFF}), prevenindo estados flutuantes e interferências.
+
+Com essa configuração, o microcontrolador pode manipular os segmentos do display para exibir números e caracteres específicos, conforme a tabela de mapeamento definida na rotina \texttt{update\_display}.
+
+\subsubsection{Resumo das Configuracoes}
+A Tabela~\ref{tab:pinos} apresenta um resumo das configurações dos pinos utilizados no sistema.
+
+\begin{table}[h]
+\centering
+\caption{Configuracao dos Pinos de Entrada e Saida}
+\label{tab:pinos}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Pino} & \textbf{Configuracao} & \textbf{Funcao} \\
+\hline
+PD2 & Entrada digital & Botao de ativacao \\
+PB5 & Saida digital & LED de depuracao \\
+PC0 -- PC7 & Saida digital & Display de 7 segmentos \\
+\hline
+\end{tabular}
+\end{table}
+
+Essas definições garantem o correto funcionamento dos dispositivos e permitem a interação eficiente do usuário com o sistema embarcado.
+
+\subsection{Interrupção do Botão}
+
+A interrupção associada ao botão físico conectado ao pino \textbf{PD2} do microcontrolador ATmega328P permite que o sistema responda a eventos assíncronos. Isso garante maior eficiência, pois o microcontrolador pode executar outras tarefas e somente interromper sua execução quando o botão for pressionado. 
+
+Para a correta implementação dessa interrupção, os seguintes elementos foram configurados:
+\begin{itemize}
+    \item \textbf{Habilitação da interrupção externa} no pino PD2 (INT0).
+    \item \textbf{Configuração para detecção de borda de descida}, garantindo que a interrupção ocorra apenas quando o botão for pressionado.
+    \item \textbf{Rotina de tratamento da interrupção}, que ativa o LED de depuração e transmite o nome do usuário via USART.
+\end{itemize}
+
+\subsubsection{Configuração da Interrupção Externa}
+A interrupção externa é configurada no pino \textbf{PD2}, que está associado à \textbf{INT0} (External Interrupt 0). O código abaixo mostra a configuração necessária:
+
+\begin{lstlisting}[style=assemblyStyle, caption={Configuracao da interrupcao externa INT0}, label={lst:button_int}]
+ldi temp, (1<<INT0)     ; Habilita a interrupcao externa INT0
+out EIMSK, temp         ; Escreve no registrador de mascara de interrupcao externa
+
+ldi temp, (1 << ISC01)  ; Configura para borda de descida (falling edge)
+sts EICRA, temp         ; Escreve no registrador de controle da interrupcao externa
+\end{lstlisting}
+
+- \texttt{EIMSK} (External Interrupt Mask Register) → Habilita a interrupção externa INT0.
+
+- \texttt{EICRA} (External Interrupt Control Register A) → Configura a interrupção para ser acionada na borda de descida do sinal.
+
+\subsubsection{Rotina de Tratamento da Interrupção}
+
+A rotina de interrupção é chamada automaticamente quando o botão é pressionado. Sua função principal é acionar o \textbf{LED de depuração} e enviar uma mensagem pelo terminal USART contendo o nome do usuário.
+
+\begin{lstlisting}[style=assemblyStyle, caption={Rotina de Tratamento da Interrupcao INT0}, label={lst:button_isr}]
+button_isr:
+    sbi PORTB, DEBUG_LED  ; Acende o LED de depuracao
+    push ZL
+    push ZH
+
+    ldi ZL, low(nome * 2)
+    ldi ZH, high(nome * 2)
+    call uart_print       ; Chama a rotina para imprimir a string armazenada em "nome"
+
+    pop ZL
+    pop ZH
+    cbi PORTB, DEBUG_LED  ; Apaga LED
+    reti                  ; Retorna da interrupcao
+\end{lstlisting}
+
+- \texttt{sbi PORTB, DEBUG\_LED} → Acende o LED de depuração para indicar que a interrupção foi acionada.
+
+- \texttt{push ZL, push ZH} → Salva os registradores para evitar perda de dados durante a interrupção.
+
+- \texttt{call uart\_print} → Chama a função que transmite a string armazenada na memória do programa via UART.
+
+- \texttt{pop ZL, pop ZH} → Restaura os registradores após a execução da rotina.
+
+- \texttt{cbi PORTB, DEBUG\_LED} → Apaga o LED de depuração após a transmissão da mensagem.
+
+- \texttt{reti} → Retorna da interrupção, restaurando o fluxo normal do programa.
+
+\subsubsection{Rotina de Transmissão da String}
+
+A string transmitida quando o botão é pressionado está armazenada na memória do programa e é enviada ao terminal utilizando a função abaixo:
+
+\begin{lstlisting}[style=assemblyStyle, caption={Rotina para envio de string via UART}, label={lst:uart_print}]
+uart_print:
+    lpm name_data, Z+    ; Le um caractere da memoria do programa
+    cpi name_data, 0     ; Verifica se e o final da string
+    breq uart_done       ; Se for, encerra a transmissao
+    call uart_transmit   ; Envia o caractere atual pela UART
+    rjmp uart_print      ; Continua enviando ate chegar ao final
+
+uart_done:
+    ret
+\end{lstlisting}
+
+Essa função percorre a memória do programa e envia cada caractere até encontrar um delimitador (`0x00`), que indica o final da string.
+
+\subsubsection{Resumo da Configuração da Interrupção}
+
+A Tabela~\ref{tab:int} apresenta um resumo das configurações necessárias para a interrupção do botão.
+
+\begin{table}[h]
+\centering
+\caption{Configuração da Interrupção do Botão}
+\label{tab:int}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Componente} & \textbf{Configuração} & \textbf{Função} \\
+\hline
+PD2 (INT0) & Entrada digital & Botão de ativação \\
+EIMSK & INT0 = 1 & Habilita interrupção externa \\
+EICRA & ISC01 = 1 & Configura para borda de descida \\
+PORTB (PB5) & Saída digital & LED de depuração \\
+\hline
+\end{tabular}
+\end{table}
+
+A implementação da interrupção externa permite que o microcontrolador responda rapidamente ao pressionamento do botão, otimizando o desempenho do sistema. Além disso, a integração com a comunicação UART possibilita a transmissão eficiente de dados ao terminal.
+
+\subsection{Interrupção de Recepção da UART e Controle do Display}
+
+O display de 7 segmentos é atualizado automaticamente sempre que um novo caractere é recebido via UART. Para garantir a resposta imediata do sistema, a recepção de dados é tratada através de uma \textbf{interrupção de recepção da UART}, permitindo que o microcontrolador continue executando outras tarefas enquanto aguarda novos dados.
+
+Quando um caractere é recebido, a interrupção é acionada e executa as seguintes etapas:
+\begin{itemize}
+    \item Aciona o LED de depuração para indicar a recepção de um novo dado.
+    \item Captura o caractere recebido e armazena-o na variável \texttt{received\_data}.
+    \item Chama a rotina de atualização do display para exibir o caractere correspondente.
+\end{itemize}
+
+\subsubsection{Rotina de Interrupção da UART}
+
+A rotina de interrupção da UART é responsável por processar os dados recebidos e chamar a função que atualiza o display. O código abaixo mostra sua implementação:
+
+\begin{lstlisting}[style=assemblyStyle, caption={Rotina de Interrupcao da UART}, label={lst:uart_rx_isr}]
+uart_rx_isr:
+    sbi PORTB, DEBUG_LED  ; Acende LED de debug para indicar recepcao de dado
+    push temp
+    call uart_receive     ; Recebe o dado da UART
+    call update_display   ; Atualiza o display com o dado recebido
+    pop temp
+    reti  ; Retorna da interrupcao
+\end{lstlisting}
+
+- \texttt{sbi PORTB, DEBUG\_LED} → Acende o LED de depuração para indicar que um dado foi recebido.
+
+- \texttt{call uart\_receive} → Chama a função que captura o dado recebido via UART e armazena-o na variável \texttt{received\_data}.
+
+- \texttt{call update\_display} → Atualiza o display com base no valor recebido.
+
+- \texttt{reti} → Retorna da interrupção, restaurando o fluxo normal do programa.
+
+Essa interrupção garante que a exibição no display seja sempre atualizada assim que um novo caractere for recebido, sem a necessidade de verificações contínuas na execução principal do código.
+
+\subsubsection{Rotina de Atualização do Display}
+
+A rotina responsável pela atualização do display converte os caracteres recebidos via UART em sinais compatíveis com os segmentos do display de 7 segmentos. O código abaixo implementa essa conversão:
+
+\begin{lstlisting}[style=assemblyStyle, caption={Rotina de Atualizacao do Display de 7 Segmentos}, label={lst:update_display}]
+update_display:
+    ; Compara o caractere recebido com os valores ASCII dos numeros de 0 a 9
+    cpi received_data, 0x30
+    ldi data_segment, 0x3f  ; '0'
+    breq exibi
+    cpi received_data, 0x31
+    ldi data_segment, 0x06  ; '1'
+    breq exibi
+                .
+                .
+                .
+    cpi received_data, 0x39
+    ldi data_segment, 0x6f  ; '9'
+    breq exibi
+
+    ; Comparacao para letras minusculas 'a' a 'f'
+    cpi received_data, 0x61
+    ldi data_segment, 0x77  ; 'a'
+    breq exibi
+                .
+                .
+                .
+    cpi received_data, 0x66
+    ldi data_segment, 0x71  ; 'f'
+    breq exibi
+
+    ; Se nao for um caractere valido, exibir '-'
+    ldi data_segment, 0x40
+    breq exibi
+
+exibi:
+    out PORTC, data_segment  ; Atualiza o display de 7 segmentos
+    ret
+\end{lstlisting}
+
+Essa rotina:
+- Converte os caracteres numéricos (0-9) e hexadecimais (A-F) nos valores correspondentes dos segmentos do display.
+
+- Caso um caractere inválido seja recebido, exibe um traço "-" como indicação (`0x40`).
+
+- Atualiza a \textbf{PORTC} com o valor correspondente ao caractere.
+
+A implementação da interrupção de recepção UART permite que o sistema responda de forma eficiente a entradas do usuário, garantindo que o display de 7 segmentos seja atualizado de maneira precisa e sem atrasos, otimizando o desempenho geral do sistema.
+
+\section{Conclusão}
+
+Este trabalho apresentou a implementação de um sistema baseado no microcontrolador ATmega328P, utilizando a comunicação serial UART para exibir caracteres em um display de 7 segmentos. O sistema foi projetado para operar de maneira eficiente, empregando interrupções tanto na recepção de dados via UART quanto na ativação de um botão físico. O uso de interrupções garantiu uma resposta rápida aos eventos, permitindo uma execução mais otimizada do código.
+
+A interrupção externa no botão demonstrou-se eficaz para acionar a transmissão de uma string predefinida pelo terminal, enquanto a interrupção de recepção da UART assegurou a exibição instantânea dos caracteres transmitidos. A implementação do display de 7 segmentos foi estruturada para suportar números de 0 a 9 e caracteres hexadecimais de A a F, oferecendo uma interface visual simples e funcional. A integração com o LED de depuração possibilitou um diagnóstico mais eficiente do funcionamento do sistema.
+
+Durante os testes, constatou-se que o sistema responde corretamente a todos os comandos esperados, exibindo os caracteres no display sem atrasos perceptíveis. O método de conversão de caracteres foi validado com sucesso, garantindo a compatibilidade dos sinais digitais com o display de 7 segmentos.
+
+Os resultados obtidos demonstram que a abordagem baseada em interrupções é eficiente e adequada para sistemas de tempo real que necessitam de respostas rápidas.
+
+
+
+\begin{thebibliography}{5}
+
+\bibitem{purdue} Purdue University. PortD as General Digital I/O. Disponível em: 
+\href{https://web.ics.purdue.edu/~jricha14/Port_Stuff/PortD_general.htm}{https://web.ics.purdue.edu/~jricha14/Port_Stuff/PortD_general.htm}. 
+Acesso em: fevereiro de 2025.
+
+\bibitem{manual} Rainbow Electronics. ATmega64M1 Manual. Disponível em: 
+\href{https://www.manualsdir.com/manuals/281197/rainbow-electronics-atmega64m1.html?page=61}{https://www.manualsdir.com/manuals/281197/rainbow-electronics-atmega64m1.html?page=61}. 
+Acesso em: fevereiro de 2025.
+
+\bibitem{maxembedded} Max Embedded. The USART of the AVR. Disponível em: 
+\href{https://maxembedded.wordpress.com/2013/09/30/the-usart-of-the-avr/}{https://maxembedded.wordpress.com/2013/09/30/the-usart-of-the-avr/}. 
+Acesso em: fevereiro de 2025.
+
+\bibitem{instructables} Instructables. Command Line Assembly Language Tutorial for Arduino. Disponível em: 
+\href{https://www.instructables.com/Command-Line-Assembly-Language-Tutorial-for-Arduin/}{https://www.instructables.com/Command-Line-Assembly-Language-Tutorial-for-Arduin/}. 
+Acesso em: fevereiro de 2025.
+
+\bibitem{electronicwings} ElectronicWings. ATmega1632 USART. Disponível em: 
+\href{https://www.electronicwings.com/avr-atmega/atmega1632-usart}{https://www.electronicwings.com/avr-atmega/atmega1632-usart}. 
+Acesso em: fevereiro de 2025.
+
+\end{thebibliography}
+
+
+
+
+\end{document}
